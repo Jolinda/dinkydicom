@@ -7,6 +7,7 @@ import matplotlib
 import PySimpleGUI as sg
 import pydicom
 
+
 def ShowSeries(foldername):
     folderpath = pathlib.Path(foldername)
     if not folderpath.exists():
@@ -71,6 +72,20 @@ def draw_figure(canvas, figure):
    tkcanvas.get_tk_widget().pack(side='top', fill='both', expand=1)
    return tkcanvas
 
+def redraw_figure(canvas, data):
+   plt.clf()
+   plt.imshow(data, cmap='gray')
+   tkcanvas = FigureCanvasTkAgg(figure, canvas)
+   tkcanvas.draw()
+   tkcanvas.get_tk_widget().pack(side='top', fill='both', expand=1)
+   return tkcanvas
+
+def pack_figure(graph, figure):
+    canvas = FigureCanvasTkAgg(figure, graph.Widget)
+    plot_widget = canvas.get_tk_widget()
+    plot_widget.pack(side='top', fill='both', expand=1)
+    return plot_widget
+
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     dicom_path = pathlib.Path('/projects/lcni/dcm/lcni/Smith/xa30_test')
@@ -80,41 +95,60 @@ if __name__ == '__main__':
               [sg.Input(key='dicom', size=(120, None)),
                sg.FolderBrowse(key='dicom_browser', initial_folder=dicom_path)],
               [sg.Button('Plot'), sg.Spin([0], key='Frame', enable_events=True), sg.Button('Exit')],
-              [sg.Canvas(key='canvas')]
+              [sg.Canvas(key='canvas', expand_x=True, expand_y=True)]
+              #[sg.Graph((640,480), (0,0), (640,480), key='Graph')]
               ]
 
     # Create the Window
-    window = sg.Window('Multiframe DICOM viewer', layout)
+    window = sg.Window('Multiframe DICOM viewer', layout, resizable=True, finalize=True)
     # Event Loop to process "events" and get the "values" of the inputs
-    figure_canvas = None
+    #figure_canvas = None
+    #graph = window['Graph']
+
+    fig,ax = plt.subplots()
+    ax.set_axis_off()
+    draw_figure(window['canvas'].TKCanvas, fig)
+    #pack_figure(graph, fig)
+
     while True:
         event, values = window.read()
-        print(event, values)
+        #print(event, values)
         if event in (None, 'Exit'):  # if user closes window or clicks Exit
             break
         if event == 'Plot':
-            if figure_canvas:
-               figure_canvas.get_tk_widget().forget()
-               plt.close('all')
+            #if figure_canvas:
+            #   figure_canvas.get_tk_widget().forget()
+            #   plt.close('all')
             frames, data = ShowSeries(values['dicom'])
+
+
             if frames:
                 assert(len(frames) == data.shape[0])
+            #    figure = GetFigure(data[0,:,:])
                 window.Element('Frame').Update(values=[x for x in range(0, len(frames))], value=0)
-                figure_canvas = draw_figure(window['canvas'].TKCanvas, GetFigure(data[0,:,:]))
-            else:
-                window.Element('Frame').Update(values=[0], value=0)
+                plt.clf()
+                plt.imshow(data[0, :, :], cmap='gray')
+                fig.canvas.draw()
+            #    figure_canvas = draw_figure(window['canvas'].TKCanvas, figure)
+            #else:
+            #    window.Element('Frame').Update(values=[0], value=0)
             #dicom_figure = ShowSeries(values['dicom'])
             #if figure_canvas:
             #    figure_canvas.get_tk_widget().forget()
             #    plt.close('all')
             #figure_canvas = draw_figure(window['canvas'].TKCanvas, dicom_figure)
 
-        if event=='Frame' and figure_canvas:
-            figure_canvas.get_tk_widget().forget()
+        if event=='Frame': # and figure_canvas:
+            #figure_canvas.get_tk_widget().forget()
             #plt.close('all')
             frameNo = values['Frame']
-            print(frameNo)
-            figure_canvas = draw_figure(window['canvas'].TKCanvas, GetFigure(data[frameNo, :, :]))
+            plt.clf()
+            plt.imshow(data[frameNo, :, :], cmap='gray')
+            fig.canvas.draw()
+            #print(frameNo)
+            #figure_canvas = draw_figure(window['canvas'].TKCanvas, figs[frameNo])
+            #figure_canvas = draw_figure(window['canvas'].TKCanvas, GetFigure(data[frameNo,:,:]))
+            #figure_canvas = redraw_figure(window['canvas'].TKCanvas, data[frameNo, :, :])
 
     window.close()
 
