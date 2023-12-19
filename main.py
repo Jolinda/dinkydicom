@@ -1,7 +1,3 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 import pathlib
 
 import numpy as np
@@ -17,13 +13,27 @@ def ShowSeries(foldername):
         sg.popup_error('Folder not found', no_titlebar=True)
         return None
 
-    ## testing
-    firstfile = next(folderpath.glob('*.dcm'), None)
-    if not firstfile:
-        sg.popup_error('No dicoms in folder', no_titlebar=True)
-        return None
+    allfiles = [pydicom.dcmread(x) for x in folderpath.glob('*.dcm')]
 
-    return ShowDicom(firstfile)
+    if not allfiles:
+        sg.popup_error('No dicoms in folder', no_titlebar=True)
+        return None, None
+
+    allfiles.sort(key=lambda x: int(x['InstanceNumber'].value))
+    allfiles = [x for x in allfiles if x.pixel_array.shape == allfiles[0].pixel_array.shape]
+    if len(allfiles[0].pixel_array.shape) > 2:
+        alldata = np.array([mosaify(x.pixel_array) for x in allfiles])
+    else:
+        alldata = np.array([x.pixel_array for x in allfiles])
+
+    print(alldata.shape)
+    return allfiles, alldata
+def GetFigure(data):
+    fig, ax = plt.subplots()
+#    ax.set_title(filename.name)
+    ax.imshow(data, cmap='gray')
+    ax.set_axis_off()
+    return fig
 
 def ShowDicom(filename):
     if not filename.exists():
@@ -32,7 +42,7 @@ def ShowDicom(filename):
 
     img = pydicom.dcmread(filename)
     print(filename)
-    print(img.pixel_array.shape)
+    print(img['InstanceNumber'])
     if len(img.pixel_array.shape) > 2:
         data = mosaify(img.pixel_array)
     else:
@@ -66,10 +76,10 @@ if __name__ == '__main__':
     dicom_path = pathlib.Path('/projects/lcni/dcm/lcni/Smith/xa30_test')
     sg.theme('Dark Blue 3')
 
-    layout = [[sg.Button('Plot'), sg.Button('Mosaic'), sg.Button('Exit')],
-              [sg.Text('Dicom folder')],
+    layout = [[sg.Text('Dicom folder')],
               [sg.Input(key='dicom', size=(120, None)),
                sg.FolderBrowse(key='dicom_browser', initial_folder=dicom_path)],
+              [sg.Button('Plot'), sg.Spin([0], key='Frame', enable_events=True), sg.Button('Exit')],
               [sg.Canvas(key='canvas')]
               ]
 
@@ -83,11 +93,28 @@ if __name__ == '__main__':
         if event in (None, 'Exit'):  # if user closes window or clicks Exit
             break
         if event == 'Plot':
-            dicom_figure = ShowSeries(values['dicom'])
             if figure_canvas:
-                figure_canvas.get_tk_widget().forget()
-                plt.close('all')
-            figure_canvas = draw_figure(window['canvas'].TKCanvas, dicom_figure)
+               figure_canvas.get_tk_widget().forget()
+               plt.close('all')
+            frames, data = ShowSeries(values['dicom'])
+            if frames:
+                assert(len(frames) == data.shape[0])
+                window.Element('Frame').Update(values=[x for x in range(0, len(frames))], value=0)
+                figure_canvas = draw_figure(window['canvas'].TKCanvas, GetFigure(data[0,:,:]))
+            else:
+                window.Element('Frame').Update(values=[0], value=0)
+            #dicom_figure = ShowSeries(values['dicom'])
+            #if figure_canvas:
+            #    figure_canvas.get_tk_widget().forget()
+            #    plt.close('all')
+            #figure_canvas = draw_figure(window['canvas'].TKCanvas, dicom_figure)
+
+        if event=='Frame' and figure_canvas:
+            figure_canvas.get_tk_widget().forget()
+            #plt.close('all')
+            frameNo = values['Frame']
+            print(frameNo)
+            figure_canvas = draw_figure(window['canvas'].TKCanvas, GetFigure(data[frameNo, :, :]))
 
     window.close()
 
