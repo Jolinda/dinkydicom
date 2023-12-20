@@ -92,7 +92,7 @@ if __name__ == '__main__':
                 window['-INFO-'].Update(value='')
             else:
                 window['-FRAME-'].Update(values=[0], value=0)
-                window['-INFO-'].Update('No dicom images found. Check folder selection.')
+                window['-INFO-'].Update(value='No dicom images found. Check folder selection.')
 
 
         if event=='-FRAME-' and dicom_data:
