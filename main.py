@@ -13,13 +13,13 @@ import pydicom
 def open_series(foldername):
     folderpath = pathlib.Path(foldername)
     if not folderpath.exists():
-        sg.popup_error('Folder not found', no_titlebar=True)
+#        sg.popup_error('Folder not found', no_titlebar=True)
         return None, None, None
 
     allfiles = [(x, pydicom.dcmread(x)) for x in folderpath.glob('*.dcm')]
 
     if not allfiles:
-        sg.popup_error('No dicoms in folder', no_titlebar=True)
+#        sg.popup_error('No dicoms in folder', no_titlebar=True)
         return None, None, None
 
     allfiles.sort(key=lambda x: int(x[1]['InstanceNumber'].value))
@@ -56,18 +56,18 @@ if __name__ == '__main__':
     sg.theme('Dark Blue 3')
 
     layout = [[sg.Text('Dicom folder')],
-              [sg.Input(key='dicom', size=(120, None), enable_events=True),
-               sg.FolderBrowse(key='browser', initial_folder=dicom_path)],
-              [sg.Text('Frame'), sg.Spin([0], key='frame', enable_events=True), sg.Button('Exit')],
-              [sg.Canvas(key='canvas', expand_x=True, expand_y=True)],
-              [sg.Text(key='info')]
+              [sg.Input(key='-FOLDER OPEN-', size=(120, None), enable_events=True),
+               sg.FolderBrowse(initial_folder=dicom_path)],
+              [sg.Text('Frame'), sg.Spin([0], key='-FRAME-', enable_events=True), sg.Button('Exit')],
+              [sg.Canvas(key='-CANVAS-', expand_x=True, expand_y=True)],
+              [sg.Text(key='-INFO-')]
               ]
 
     window = sg.Window('Multiframe DICOM viewer', layout, resizable=True, finalize=True)
 
     fig,ax = plt.subplots()
     ax.set_axis_off()
-    draw_figure(window['canvas'].TKCanvas, fig)
+    draw_figure(window['-CANVAS-'].TKCanvas, fig)
     dicom_data = None
 
     while True:
@@ -75,22 +75,28 @@ if __name__ == '__main__':
         #print(event, values)
         if event in (None, 'Exit'):  # if user closes window or clicks Exit
             break
-        if event == 'dicom':
-            window['info'].Update(value='Please be patient while data loads.')
-            dicom_data, vmin, vmax = open_series(values['dicom'])
+        if event == '-FOLDER OPEN-':
             ax.clear()
             ax.set_axis_off()
+            fig.canvas.draw()
+            window['-INFO-'].Update(value='Please be patient while data loads.')
+            window.perform_long_operation(lambda: open_series(values['-FOLDER OPEN-']), '-DICOMS LOADED-')
+            
+        if event == '-DICOMS LOADED-':
+            dicom_data, vmin, vmax = values['-DICOMS LOADED-']
             if dicom_data:
-                window['frame'].Update(values=[x for x in range(0, len(dicom_data))], value=0)
+                window['-FRAME-'].Update(values=[x for x in range(0, len(dicom_data))], value=0)
                 ax.set_title(dicom_data[0].name)
                 ax.imshow(get_data(dicom_data[0]), vmin=vmin, vmax=vmax, cmap='gray')
+                fig.canvas.draw()
+                window['-INFO-'].Update(value='')
             else:
-                window['frame'].Update(values=[0], value=0)
-            fig.canvas.draw()
-            window['info'].Update(value='')
+                window['-FRAME-'].Update(values=[0], value=0)
+                window['-INFO-'].Update('No dicom images found. Check folder selection.')
 
-        if event=='frame' and dicom_data:
-            frameNo = values['frame']
+
+        if event=='-FRAME-' and dicom_data:
+            frameNo = values['-FRAME-']
             ax.clear()
             ax.set_title(dicom_data[frameNo].name)
             ax.set_axis_off()
