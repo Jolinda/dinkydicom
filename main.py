@@ -7,17 +7,20 @@ import matplotlib
 import PySimpleGUI as sg
 import pydicom
 
+# todo: message while data loads. Does not work currently; may need threads
+# todo: user change vmin, vmax
+
 def open_series(foldername):
     folderpath = pathlib.Path(foldername)
     if not folderpath.exists():
         sg.popup_error('Folder not found', no_titlebar=True)
-        return None
+        return None, None, None
 
     allfiles = [(x, pydicom.dcmread(x)) for x in folderpath.glob('*.dcm')]
 
     if not allfiles:
         sg.popup_error('No dicoms in folder', no_titlebar=True)
-        return None, None
+        return None, None, None
 
     allfiles.sort(key=lambda x: int(x[1]['InstanceNumber'].value))
     vmin = min([x['SmallestImagePixelValue'].value for _,x in allfiles])
@@ -56,7 +59,8 @@ if __name__ == '__main__':
               [sg.Input(key='dicom', size=(120, None), enable_events=True),
                sg.FolderBrowse(key='browser', initial_folder=dicom_path)],
               [sg.Text('Frame'), sg.Spin([0], key='frame', enable_events=True), sg.Button('Exit')],
-              [sg.Canvas(key='canvas', expand_x=True, expand_y=True)]
+              [sg.Canvas(key='canvas', expand_x=True, expand_y=True)],
+              [sg.Text(key='info')]
               ]
 
     window = sg.Window('Multiframe DICOM viewer', layout, resizable=True, finalize=True)
@@ -72,16 +76,18 @@ if __name__ == '__main__':
         if event in (None, 'Exit'):  # if user closes window or clicks Exit
             break
         if event == 'dicom':
+            window['info'].Update(value='Please be patient while data loads.')
             dicom_data, vmin, vmax = open_series(values['dicom'])
             ax.clear()
             ax.set_axis_off()
             if dicom_data:
-                window.Element('frame').Update(values=[x for x in range(0, len(dicom_data))], value=0)
+                window['frame'].Update(values=[x for x in range(0, len(dicom_data))], value=0)
                 ax.set_title(dicom_data[0].name)
                 ax.imshow(get_data(dicom_data[0]), vmin=vmin, vmax=vmax, cmap='gray')
             else:
-                window.Element('frame').Update(values=[0], value=0)
+                window['frame'].Update(values=[0], value=0)
             fig.canvas.draw()
+            window['info'].Update(value='')
 
         if event=='frame' and dicom_data:
             frameNo = values['frame']
