@@ -20,7 +20,16 @@ def open_series(foldername):
         return None, None
 
     allfiles.sort(key=lambda x: int(x[1]['InstanceNumber'].value))
-    return allfiles
+    vmin = min([x['SmallestImagePixelValue'].value for _,x in allfiles])
+    vmax = max([x['LargestImagePixelValue'].value for _,x in allfiles])
+
+    allfiles = [x for x,_ in allfiles]
+
+    return allfiles, vmin, vmax
+
+def get_data(filename):
+    img = pydicom.dcmread(filename)
+    return mosaify(img.pixel_array)
 
 def mosaify(data):
     if len(data.shape) < 3:
@@ -63,13 +72,13 @@ if __name__ == '__main__':
         if event in (None, 'Exit'):  # if user closes window or clicks Exit
             break
         if event == 'dicom':
-            dicom_data = open_series(values['dicom'])
+            dicom_data, vmin, vmax = open_series(values['dicom'])
             ax.clear()
             ax.set_axis_off()
             if dicom_data:
                 window.Element('frame').Update(values=[x for x in range(0, len(dicom_data))], value=0)
-                ax.set_title(dicom_data[0][0].name)
-                ax.imshow(mosaify(dicom_data[0][1].pixel_array), cmap='gray')
+                ax.set_title(dicom_data[0].name)
+                ax.imshow(get_data(dicom_data[0]), vmin=vmin, vmax=vmax, cmap='gray')
             else:
                 window.Element('frame').Update(values=[0], value=0)
             fig.canvas.draw()
@@ -77,9 +86,9 @@ if __name__ == '__main__':
         if event=='frame' and dicom_data:
             frameNo = values['frame']
             ax.clear()
-            ax.set_title(dicom_data[frameNo][0].name)
+            ax.set_title(dicom_data[frameNo].name)
             ax.set_axis_off()
-            ax.imshow(mosaify(dicom_data[frameNo][1].pixel_array), cmap='gray')
+            ax.imshow(get_data(dicom_data[frameNo]), vmin=vmin, vmax=vmax, cmap='gray')
             fig.canvas.draw()
 
     window.close()
