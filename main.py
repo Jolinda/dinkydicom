@@ -28,9 +28,9 @@ class DicomSeries:
         self.datasets.sort(key=lambda x: int(x.ds['InstanceNumber'].value))
         self.nfiles = len(self.datasets)
 
-    def show_image(self, ax, frameNo=0, vmin=None, vmax=None):
-        filename = self.datasets[frameNo].path.name
-        dataset = self.datasets[frameNo].ds
+    def show_image(self, ax, fileNo=0, vmin=None, vmax=None, sliceNo=0, mosaic=True):
+        filename = self.datasets[fileNo].path.name
+        dataset = self.datasets[fileNo].ds
         if not vmin:
             vmin = self.minpixval
         if not vmax:
@@ -38,7 +38,15 @@ class DicomSeries:
         ax.clear()
         ax.set_title(filename)
         ax.set_axis_off()
-        data=mosaify(dataset.pixel_array)
+
+        assert len(dataset.pixel_array.shape) < 4
+        if len(dataset.pixel_array.shape) == 2:
+            data = dataset.pixel_array
+        elif mosaic:
+            data = mosaify(dataset.pixel_array)
+        else:
+            data = dataset.pixel_array[sliceNo, ...]
+
         ax.imshow(data, vmin=vmin, vmax=vmax, cmap='gray')
 
 def mosaify(data):
@@ -72,6 +80,7 @@ if __name__ == '__main__':
                sg.Text('vmax'),
                sg.Slider(key='-VMAX-', orientation = 'h', range=(0, 1000),
                          default_value=1000, enable_events=True, expand_x=True),
+               sg.Button('Demosaic', key='-DEMOSAIC-'),
                sg.Button('Show DICOM file', key='-DICOM TEXT-'), sg.Button('Exit')],
               [sg.Canvas(key='-CANVAS-', expand_x=True, expand_y=True)],
               [sg.Text(key='-INFO-')]
@@ -83,6 +92,9 @@ if __name__ == '__main__':
     ax.set_axis_off()
     draw_figure(window['-CANVAS-'].TKCanvas, fig)
     dicom_data = None
+    mosaic = True
+    fileNo = 0
+    sliceNo = 0
 
     while True:
         event, values = window.read()
@@ -100,6 +112,9 @@ if __name__ == '__main__':
         if event == '-DICOMS LOADED-':
             dicom_data = values['-DICOMS LOADED-']
             if dicom_data.has_dicoms:
+                mosaic=True
+                fileNo = 0
+                sliceNo = 0
                 window['-FRAME-'].Update(values=[x for x in range(0, dicom_data.nfiles)], value=0)
                 dicom_data.show_image(ax)
                 fig.canvas.draw()
@@ -116,9 +131,15 @@ if __name__ == '__main__':
                 window['-INFO-'].Update(value='No dicom images found. Check folder selection.')
                 dicom_data = None
 
+        if event == '-FRAME-' and dicom_data:
+            if mosaic:
+                fileNo = values['-FRAME-']
+            else:
+                sliceNo = values['-FRAME-']
+            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=sliceNo, mosaic=mosaic)
+            fig.canvas.draw()
 
-        if event in ['-FRAME-', '-VMIN-', '-VMAX-'] and dicom_data:
-            frameNo = values['-FRAME-']
+        if event in ['-VMIN-', '-VMAX-'] and dicom_data:
             vmin = values['-VMIN-']
             vmax = values['-VMAX-']
             if event == '-VMIN-' and vmin > vmax:
@@ -128,14 +149,27 @@ if __name__ == '__main__':
                 vmax = vmin
                 window['-VMAX-'].Update(value=vmax)
 
-            dicom_data.show_image(ax, frameNo=frameNo, vmin=vmin, vmax=vmax)
+            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=sliceNo, mosaic=mosaic)
+            fig.canvas.draw()
+
+        if event == '-DEMOSAIC-' and dicom_data:
+            mosaic = not mosaic
+            vmin = values['-VMIN-']
+            vmax = values['-VMAX-']
+            if not mosaic:
+                fileNo = values['-FRAME-']
+                nslices = dicom_data.datasets[fileNo].ds.pixel_array.shape[0]
+                window['-FRAME-'].Update(values=[x for x in range(0, nslices)], value=0)
+            else:
+                window['-FRAME-'].Update(values=[x for x in range(0, dicom_data.nfiles)], value=fileNo)
+
+            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=sliceNo, mosaic=mosaic)
             fig.canvas.draw()
 
         if event == '-DICOM TEXT-':
             if dicom_data:
-                frameNo = values['-FRAME-']
-                sg.popup_scrolled(dicom_data.datasets[frameNo].ds,
-                                  title=dicom_data.datasets[frameNo].path,
+                sg.popup_scrolled(dicom_data.datasets[fileNo].ds,
+                                  title=dicom_data.datasets[fileNo].path,
                                   font='Courier', modal=False, non_blocking=True)
 
 
