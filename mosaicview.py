@@ -8,8 +8,8 @@ import matplotlib
 import PySimpleGUI as sg
 import pydicom
 
-# todo: message while data loads. Does not work currently; may need threads
-# todo: user change vmin, vmax
+# todo: add parameter for 2d vs 3d datasets
+# fix mosaic behavior for 2d datasets
 DicomDataset = namedtuple('DicomDataset', ['path', 'ds'])
 class DicomSeries:
     def __init__(self, foldername):
