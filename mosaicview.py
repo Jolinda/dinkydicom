@@ -1,10 +1,11 @@
 import pathlib
 from collections import namedtuple
+import configparser
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import matplotlib
+#import matplotlib
 import PySimpleGUI as sg
 import pydicom
 
@@ -67,7 +68,18 @@ def draw_figure(canvas, figure):
    return tkcanvas
 
 if __name__ == '__main__':
-    dicom_path = pathlib.Path('/projects/lcni/dcm/lcni/Smith/xa30_test')
+
+    config = configparser.ConfigParser()
+    configfile = pathlib.Path.cwd() / 'settings.ini'
+    if configfile.exists():
+        config.read(configfile)
+    else:
+        config['defaults'] = {'dicom_path': pathlib.Path.home(),
+                              'save_last_path': True}
+
+    dicom_path = config['defaults']['dicom_path']
+
+    #dicom_path = pathlib.Path('/projects/lcni/dcm/lcni/Smith/xa30_test')
     sg.theme('Dark Blue 3')
 
     layout = [[sg.Text('Dicom folder'),
@@ -95,6 +107,8 @@ if __name__ == '__main__':
     mosaic = True
     fileNo = 0
     sliceNo = 0
+    vmin = 0
+    vmax = 4096
 
     while True:
         event, values = window.read()
@@ -108,6 +122,8 @@ if __name__ == '__main__':
             window['-INFO-'].Update(value='Please be patient while data loads.')
             window['-FOLDER BROWSER-'].InitialFolder = values['-FOLDER OPEN-']
             window.perform_long_operation(lambda: DicomSeries(values['-FOLDER OPEN-']), '-DICOMS LOADED-')
+            if config['defaults'].getboolean('save_last_path'):
+                config['defaults']['dicom_path'] = values['-FOLDER OPEN-']
             
         if event == '-DICOMS LOADED-':
             dicom_data = values['-DICOMS LOADED-']
@@ -119,8 +135,10 @@ if __name__ == '__main__':
                 dicom_data.show_image(ax)
                 fig.canvas.draw()
                 max_range = dicom_data.maxpix
-                window['-VMIN-'].Update(value=dicom_data.minpixval, range=(0, max_range))
-                window['-VMAX-'].Update(value=dicom_data.maxpixval, range=(0, max_range))
+                vmin = dicom_data.minpixval
+                vmax = dicom_data.maxpixval
+                window['-VMIN-'].Update(value=vmin, range=(0, max_range))
+                window['-VMAX-'].Update(value=vmax, range=(0, max_range))
 
                 if dicom_data.nfiles > 1:
                     window['-INFO-'].Update(value=f'{dicom_data.nfiles} files loaded.')
@@ -172,7 +190,8 @@ if __name__ == '__main__':
                                   title=dicom_data.datasets[fileNo].path,
                                   font='Courier', modal=False, non_blocking=True)
 
-
     window.close()
 
+    with open('settings.ini', 'w') as f:
+        config.write(f)
 
