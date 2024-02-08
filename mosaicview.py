@@ -22,7 +22,7 @@ class DicomSeries:
             self.has_dicoms = True
             self.minpixval = min([x.ds['SmallestImagePixelValue'].value for x in self.datasets])
             self.maxpixval = max([x.ds['LargestImagePixelValue'].value for x in self.datasets])
-            self.maxpix = 2 ** int(self.datasets[0].ds['BitsStored'].value)
+            self.maxpix = 2 ** int(self.datasets[0].ds['BitsStored'].value) - 1
         else:
             self.has_dicoms = False
 
@@ -143,6 +143,9 @@ if __name__ == '__main__':
                 max_range = dicom_data.maxpix
                 vmin = dicom_data.minpixval
                 vmax = dicom_data.maxpixval
+                if vmax == max_range:
+                    sg.popup('Brightest pixel is at max range. Image intensity values may be clipped.',
+                             title='Warning')
                 window['-VMIN-'].Update(value=vmin, range=(0, max_range))
                 window['-VMAX-'].Update(value=vmax, range=(0, max_range))
 
