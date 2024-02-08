@@ -85,14 +85,15 @@ if __name__ == '__main__':
     layout = [[sg.Text('Dicom folder'),
                sg.Input(key='-FOLDER OPEN-', size=(120, None), enable_events=True),
                sg.FolderBrowse(key='-FOLDER BROWSER-', initial_folder=dicom_path)],
-              [sg.Text('Frame'), sg.Spin([0], key='-FRAME-', enable_events=True),
+              [sg.Text('File', key='-SPIN LABEL-'),
+               sg.Spin([0], key='-FRAME-', enable_events=True),
                sg.Text('vmin'),
                sg.Slider(key='-VMIN-', orientation = 'h', range=(0, 1000),
                          default_value=0, enable_events=True, expand_x=True),
                sg.Text('vmax'),
                sg.Slider(key='-VMAX-', orientation = 'h', range=(0, 1000),
                          default_value=1000, enable_events=True, expand_x=True),
-               sg.Button('Demosaic', key='-DEMOSAIC-'),
+               sg.Button('Demosaic', key='-DEMOSAIC-', disabled=True),
                sg.Button('Show DICOM file', key='-DICOM TEXT-'), sg.Button('Exit')],
               [sg.Canvas(key='-CANVAS-', expand_x=True, expand_y=True)],
               [sg.Text(key='-INFO-')]
@@ -128,10 +129,15 @@ if __name__ == '__main__':
         if event == '-DICOMS LOADED-':
             dicom_data = values['-DICOMS LOADED-']
             if dicom_data.has_dicoms:
+                if dicom_data.datasets[0].ds['SOPClassUID'].value == pydicom.uid.EnhancedMRImageStorage:
+                    window['-DEMOSAIC-'].Update(disabled=False, text='Demosaic')
+                else:
+                    window['-DEMOSAIC-'].Update(disabled=True)
                 mosaic=True
                 fileNo = 0
                 sliceNo = 0
                 window['-FRAME-'].Update(values=[x for x in range(0, dicom_data.nfiles)], value=0)
+                window['-SPIN LABEL-'].Update('File')
                 dicom_data.show_image(ax)
                 fig.canvas.draw()
                 max_range = dicom_data.maxpix
@@ -178,8 +184,12 @@ if __name__ == '__main__':
                 fileNo = values['-FRAME-']
                 nslices = dicom_data.datasets[fileNo].ds.pixel_array.shape[0]
                 window['-FRAME-'].Update(values=[x for x in range(0, nslices)], value=0)
+                window['-SPIN LABEL-'].Update('Frame')
+                window['-DEMOSAIC-'].Update(text='Mosaic')
             else:
                 window['-FRAME-'].Update(values=[x for x in range(0, dicom_data.nfiles)], value=fileNo)
+                window['-SPIN LABEL-'].Update('File')
+                window['-DEMOSAIC-'].Update(text='Demosaic')
 
             dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=sliceNo, mosaic=mosaic)
             fig.canvas.draw()
