@@ -9,8 +9,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import PySimpleGUI as sg
 import pydicom
 
-# todo: add parameter for 2d vs 3d datasets
-# fix mosaic behavior for 2d datasets
+# todo: deal with multiple series in one folder
+# see stability checker for one approach
 DicomDataset = namedtuple('DicomDataset', ['path', 'ds'])
 class DicomSeries:
     def __init__(self, foldername):
@@ -29,7 +29,7 @@ class DicomSeries:
         self.datasets.sort(key=lambda x: int(x.ds['InstanceNumber'].value))
         self.nfiles = len(self.datasets)
 
-    def show_image(self, ax, fileNo=0, vmin=None, vmax=None, sliceNo=0, mosaic=True):
+    def show_image(self, ax, fileNo=0, vmin=None, vmax=None, sliceNo=0, mosaic=True, view_axis=0):
         filename = self.datasets[fileNo].path.name
         dataset = self.datasets[fileNo].ds
         if not vmin:
@@ -46,7 +46,8 @@ class DicomSeries:
         elif mosaic:
             data = mosaify(dataset.pixel_array)
         else:
-            data = dataset.pixel_array[sliceNo, ...]
+            #data = dataset.pixel_array[sliceNo, ...]
+            data = dataset.pixel_array.take(indices = sliceNo, axis=view_axis)
 
         ax.imshow(data, vmin=vmin, vmax=vmax, cmap='gray')
 
@@ -85,8 +86,10 @@ if __name__ == '__main__':
     layout = [[sg.Text('Dicom folder'),
                sg.Input(key='-FOLDER OPEN-', size=(120, None), enable_events=True),
                sg.FolderBrowse(key='-FOLDER BROWSER-', initial_folder=dicom_path)],
-              [sg.Text('File', key='-SPIN LABEL-'),
+              [sg.Text('File', key='-FRAME LABEL-'),
                sg.Spin([0], key='-FRAME-', enable_events=True),
+               sg.Text('Axis'),
+               sg.Spin([0], key='-AXIS-', enable_events=True),
                sg.Text('vmin'),
                sg.Slider(key='-VMIN-', orientation = 'h', range=(0, 1000),
                          default_value=0, enable_events=True, expand_x=True),
@@ -137,7 +140,9 @@ if __name__ == '__main__':
                 fileNo = 0
                 sliceNo = 0
                 window['-FRAME-'].Update(values=[x for x in range(0, dicom_data.nfiles)], value=0)
-                window['-SPIN LABEL-'].Update('File')
+                window['-FRAME LABEL-'].Update('File')
+                data_shape = dicom_data.datasets[0].ds.pixel_array.shape
+                window['-AXIS-'].Update(values=[x for x in range(0, len(data_shape))], value=0)
                 dicom_data.show_image(ax)
                 fig.canvas.draw()
                 max_range = dicom_data.maxpix
@@ -163,7 +168,8 @@ if __name__ == '__main__':
                 fileNo = values['-FRAME-']
             else:
                 sliceNo = values['-FRAME-']
-            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=sliceNo, mosaic=mosaic)
+            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=sliceNo, mosaic=mosaic,
+                                  view_axis = values['-AXIS-'])
             fig.canvas.draw()
 
         if event in ['-VMIN-', '-VMAX-'] and dicom_data:
@@ -176,7 +182,8 @@ if __name__ == '__main__':
                 vmax = vmin
                 window['-VMAX-'].Update(value=vmax)
 
-            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=sliceNo, mosaic=mosaic)
+            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=sliceNo, mosaic=mosaic,
+                                  view_axis = values['-AXIS-'])
             fig.canvas.draw()
 
         if event == '-DEMOSAIC-' and dicom_data:
@@ -187,11 +194,11 @@ if __name__ == '__main__':
                 fileNo = values['-FRAME-']
                 nslices = dicom_data.datasets[fileNo].ds.pixel_array.shape[0]
                 window['-FRAME-'].Update(values=[x for x in range(0, nslices)], value=0)
-                window['-SPIN LABEL-'].Update('Frame')
+                window['-FRAME LABEL-'].Update('Frame')
                 window['-DEMOSAIC-'].Update(text='Mosaic')
             else:
                 window['-FRAME-'].Update(values=[x for x in range(0, dicom_data.nfiles)], value=fileNo)
-                window['-SPIN LABEL-'].Update('File')
+                window['-FRAME LABEL-'].Update('File')
                 window['-DEMOSAIC-'].Update(text='Demosaic')
 
             dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=sliceNo, mosaic=mosaic)
