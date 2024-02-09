@@ -46,7 +46,7 @@ class DicomSeries:
             data = mosaify(dataset.pixel_array)
         else:
             #data = dataset.pixel_array[sliceNo, ...]
-            data = dataset.pixel_array.take(indices = sliceNo, axis=view_axis)
+            data = dataset.pixel_array.take(indices=sliceNo, axis=view_axis)
             for x in range(0, rotate):
                 data = np.rot90(data)
 
@@ -70,7 +70,6 @@ def draw_figure(canvas, figure):
    return tkcanvas
 
 if __name__ == '__main__':
-
     config = configparser.ConfigParser()
     configfile = pathlib.Path.cwd() / 'settings.ini'
     if configfile.exists():
@@ -105,7 +104,7 @@ if __name__ == '__main__':
               [sg.Text(key='-INFO-')]
               ]
 
-    window = sg.Window('Multiframe DICOM viewer', layout, resizable=True, finalize=True)
+    window = sg.Window('DinkyDicom Multiframe DICOM Viewer', layout, resizable=True, finalize=True)
 
     fig,ax = plt.subplots()
     ax.set_axis_off()
@@ -165,10 +164,32 @@ if __name__ == '__main__':
                 window['-INFO-'].Update(value='No dicom images found. Check folder selection.')
                 dicom_data = None
 
-        if (event == '-FILENO-' or event == '-FRAMENO-' or event == '-AXIS-') and dicom_data:
+        if event == '-FRAMENO-' and dicom_data:
             fileNo = values['-FILENO-']
             frameNo = values['-FRAMENO-']
             axisNo = values['-AXIS-']
+            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=frameNo, mosaic=mosaic,
+                                  view_axis=axisNo, rotate=rotate)
+            fig.canvas.draw()
+
+        if event == '-FILENO-' and dicom_data:
+            fileNo = values['-FILENO-']
+            frameNo = values['-FRAMENO-']
+            axisNo = values['-AXIS-']
+            nslices = dicom_data.datasets[fileNo].ds.pixel_array.shape[axisNo]
+            if frameNo >= nslices:
+                frameNo = 0
+            window['-FRAMENO-'].Update(value=frameNo, values=[x for x in range(0, nslices)])
+
+            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=frameNo, mosaic=mosaic,
+                                  view_axis=axisNo, rotate=rotate)
+            fig.canvas.draw()
+
+        if event == '-AXIS-' and dicom_data and not mosaic:
+            axisNo = values['-AXIS-']
+            nslices = dicom_data.datasets[fileNo].ds.pixel_array.shape[axisNo]
+            fileNo = values['-FILENO-']
+            window['-FRAMENO-'].Update(value=0, values=[x for x in range(0, nslices)])
             dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=frameNo, mosaic=mosaic,
                                   view_axis=axisNo, rotate=rotate)
             fig.canvas.draw()
@@ -209,6 +230,7 @@ if __name__ == '__main__':
                 window['-FRAMENO-'].Update(values=[x for x in range(0, nslices)], value=0)
                 window['-DEMOSAIC-'].Update(text='Mosaic')
             else:
+                rotate = 0
                 window['-FRAMENO-'].Update(values=[0], value=0)
                 window['-DEMOSAIC-'].Update(text='Demosaic')
 
