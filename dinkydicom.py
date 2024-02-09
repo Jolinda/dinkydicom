@@ -187,8 +187,9 @@ if __name__ == '__main__':
 
         if event == '-AXIS-' and dicom_data and not mosaic:
             axisNo = values['-AXIS-']
-            nslices = dicom_data.datasets[fileNo].ds.pixel_array.shape[axisNo]
             fileNo = values['-FILENO-']
+            nslices = dicom_data.datasets[fileNo].ds.pixel_array.shape[axisNo]
+            frameNo = 0
             window['-FRAMENO-'].Update(value=0, values=[x for x in range(0, nslices)])
             dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=frameNo, mosaic=mosaic,
                                   view_axis=axisNo, rotate=rotate)
