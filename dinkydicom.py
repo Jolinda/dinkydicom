@@ -28,7 +28,7 @@ class DicomSeries:
         self.datasets.sort(key=lambda x: int(x.ds['InstanceNumber'].value))
         self.nfiles = len(self.datasets)
 
-    def show_image(self, ax, fileNo=0, vmin=None, vmax=None, sliceNo=0, mosaic=True, view_axis=0):
+    def show_image(self, ax, fileNo=0, vmin=None, vmax=None, sliceNo=0, mosaic=True, view_axis=0, rotate=0):
         filename = self.datasets[fileNo].path.name
         dataset = self.datasets[fileNo].ds
         if not vmin:
@@ -47,6 +47,8 @@ class DicomSeries:
         else:
             #data = dataset.pixel_array[sliceNo, ...]
             data = dataset.pixel_array.take(indices = sliceNo, axis=view_axis)
+            for x in range(0, rotate):
+                data = np.rot90(data)
 
         ax.imshow(data, vmin=vmin, vmax=vmax, cmap='gray')
 
@@ -97,6 +99,7 @@ if __name__ == '__main__':
                sg.Slider(key='-VMAX-', orientation = 'h', range=(0, 1000),
                          default_value=1000, enable_events=True, expand_x=True),
                sg.Button('Demosaic', key='-DEMOSAIC-', disabled=True),
+               sg.Button('Rotate', key='-ROTATE-'),
                sg.Button('Show DICOM file', key='-DICOM TEXT-'), sg.Button('Exit')],
               [sg.Canvas(key='-CANVAS-', expand_x=True, expand_y=True)],
               [sg.Text(key='-INFO-')]
@@ -109,8 +112,7 @@ if __name__ == '__main__':
     draw_figure(window['-CANVAS-'].TKCanvas, fig)
     dicom_data = None
     mosaic = True
-    #fileNo = 0
-    #frameNo = 0
+    rotate = 0
     vmin = 0
     vmax = 4096
 
@@ -138,6 +140,7 @@ if __name__ == '__main__':
                 mosaic=True
                 fileNo = 0
                 frameNo = 0
+                rotate = 0
                 window['-FILENO-'].Update(values=[x for x in range(0, dicom_data.nfiles)], value=0)
                 data_shape = dicom_data.datasets[0].ds.pixel_array.shape
                 window['-AXIS-'].Update(values=[x for x in range(0, len(data_shape))], value=0)
@@ -167,9 +170,17 @@ if __name__ == '__main__':
             frameNo = values['-FRAMENO-']
             axisNo = values['-AXIS-']
             dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=frameNo, mosaic=mosaic,
-                                  view_axis = axisNo)
+                                  view_axis=axisNo, rotate=rotate)
             fig.canvas.draw()
 
+        if event == '-ROTATE-' and dicom_data:
+            rotate = (rotate + 1) % 4
+            fileNo = values['-FILENO-']
+            frameNo = values['-FRAMENO-']
+            axisNo = values['-AXIS-']
+            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=frameNo, mosaic=mosaic,
+                                  view_axis=axisNo, rotate=rotate)
+            fig.canvas.draw()
 
         if event in ['-VMIN-', '-VMAX-'] and dicom_data:
             vmin = values['-VMIN-']
@@ -185,7 +196,7 @@ if __name__ == '__main__':
             frameNo = values['-FRAMENO-']
             axisNo = values['-AXIS-']
             dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=frameNo, mosaic=mosaic,
-                                  view_axis = axisNo)
+                                  view_axis=axisNo, rotate=rotate)
             fig.canvas.draw()
 
         if event == '-DEMOSAIC-' and dicom_data:
@@ -205,7 +216,7 @@ if __name__ == '__main__':
             frameNo = values['-FRAMENO-']
             axisNo = values['-AXIS-']
             dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=frameNo, mosaic=mosaic,
-                                  view_axis = axisNo)
+                                  view_axis = axisNo, rotate=rotate)
             fig.canvas.draw()
 
         if event == '-DICOM TEXT-':
