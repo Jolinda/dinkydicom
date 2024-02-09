@@ -5,7 +5,6 @@ import configparser
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-#import matplotlib
 import PySimpleGUI as sg
 import pydicom
 
@@ -80,14 +79,15 @@ if __name__ == '__main__':
 
     dicom_path = config['defaults']['dicom_path']
 
-    #dicom_path = pathlib.Path('/projects/lcni/dcm/lcni/Smith/xa30_test')
     sg.theme('Dark Blue 3')
 
     layout = [[sg.Text('Dicom folder'),
                sg.Input(key='-FOLDER OPEN-', size=(120, None), enable_events=True),
                sg.FolderBrowse(key='-FOLDER BROWSER-', initial_folder=dicom_path)],
-              [sg.Text('File', key='-FRAME LABEL-'),
-               sg.Spin([0], key='-FRAME-', enable_events=True),
+              [sg.Text('File'),
+               sg.Spin([0], key='-FILENO-', enable_events=True),
+               sg.Text('Frame'),
+               sg.Spin([0], key='-FRAMENO-', enable_events=True),
                sg.Text('Axis'),
                sg.Spin([0], key='-AXIS-', enable_events=True),
                sg.Text('vmin'),
@@ -109,14 +109,13 @@ if __name__ == '__main__':
     draw_figure(window['-CANVAS-'].TKCanvas, fig)
     dicom_data = None
     mosaic = True
-    fileNo = 0
-    sliceNo = 0
+    #fileNo = 0
+    #frameNo = 0
     vmin = 0
     vmax = 4096
 
     while True:
         event, values = window.read()
-        #print(event, values)
         if event in (None, 'Exit'):  # if user closes window or clicks Exit
             break
         if event == '-FOLDER OPEN-':
@@ -138,9 +137,8 @@ if __name__ == '__main__':
                     window['-DEMOSAIC-'].Update(disabled=True)
                 mosaic=True
                 fileNo = 0
-                sliceNo = 0
-                window['-FRAME-'].Update(values=[x for x in range(0, dicom_data.nfiles)], value=0)
-                window['-FRAME LABEL-'].Update('File')
+                frameNo = 0
+                window['-FILENO-'].Update(values=[x for x in range(0, dicom_data.nfiles)], value=0)
                 data_shape = dicom_data.datasets[0].ds.pixel_array.shape
                 window['-AXIS-'].Update(values=[x for x in range(0, len(data_shape))], value=0)
                 dicom_data.show_image(ax)
@@ -159,18 +157,19 @@ if __name__ == '__main__':
                 else:
                     window['-INFO-'].Update(value=f'1 file loaded.')
             else:
-                window['-FRAME-'].Update(values=[0], value=0)
+                window['-FRAMENO-'].Update(values=[0], value=0)
+                window['-FILENO-'].Update(values=[0], value=0)
                 window['-INFO-'].Update(value='No dicom images found. Check folder selection.')
                 dicom_data = None
 
-        if event == '-FRAME-' and dicom_data:
-            if mosaic:
-                fileNo = values['-FRAME-']
-            else:
-                sliceNo = values['-FRAME-']
-            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=sliceNo, mosaic=mosaic,
-                                  view_axis = values['-AXIS-'])
+        if (event == '-FILENO-' or event == '-FRAMENO-' or event == '-AXIS-') and dicom_data:
+            fileNo = values['-FILENO-']
+            frameNo = values['-FRAMENO-']
+            axisNo = values['-AXIS-']
+            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=frameNo, mosaic=mosaic,
+                                  view_axis = axisNo)
             fig.canvas.draw()
+
 
         if event in ['-VMIN-', '-VMAX-'] and dicom_data:
             vmin = values['-VMIN-']
@@ -182,8 +181,11 @@ if __name__ == '__main__':
                 vmax = vmin
                 window['-VMAX-'].Update(value=vmax)
 
-            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=sliceNo, mosaic=mosaic,
-                                  view_axis = values['-AXIS-'])
+            fileNo = values['-FILENO-']
+            frameNo = values['-FRAMENO-']
+            axisNo = values['-AXIS-']
+            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=frameNo, mosaic=mosaic,
+                                  view_axis = axisNo)
             fig.canvas.draw()
 
         if event == '-DEMOSAIC-' and dicom_data:
@@ -191,17 +193,19 @@ if __name__ == '__main__':
             vmin = values['-VMIN-']
             vmax = values['-VMAX-']
             if not mosaic:
-                fileNo = values['-FRAME-']
+                fileNo = values['-FILENO-']
                 nslices = dicom_data.datasets[fileNo].ds.pixel_array.shape[0]
-                window['-FRAME-'].Update(values=[x for x in range(0, nslices)], value=0)
-                window['-FRAME LABEL-'].Update('Frame')
+                window['-FRAMENO-'].Update(values=[x for x in range(0, nslices)], value=0)
                 window['-DEMOSAIC-'].Update(text='Mosaic')
             else:
-                window['-FRAME-'].Update(values=[x for x in range(0, dicom_data.nfiles)], value=fileNo)
-                window['-FRAME LABEL-'].Update('File')
+                window['-FRAMENO-'].Update(values=[0], value=0)
                 window['-DEMOSAIC-'].Update(text='Demosaic')
 
-            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=sliceNo, mosaic=mosaic)
+            fileNo = values['-FILENO-']
+            frameNo = values['-FRAMENO-']
+            axisNo = values['-AXIS-']
+            dicom_data.show_image(ax, fileNo=fileNo, vmin=vmin, vmax=vmax, sliceNo=frameNo, mosaic=mosaic,
+                                  view_axis = axisNo)
             fig.canvas.draw()
 
         if event == '-DICOM TEXT-':
