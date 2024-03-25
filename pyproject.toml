@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dinkydicom"
-version = "1.0.0a0"
+version = "1.0.0"
 description = "viewer for enhanced MR dicoms with mosaic options"
 authors = ["jolinda <jolinda@uoregon.edu>"]
 license = "MIT"

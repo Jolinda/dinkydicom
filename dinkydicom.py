@@ -86,7 +86,8 @@ if __name__ == '__main__':
                sg.Input(key='-FOLDER OPEN-', size=(120, None), enable_events=True),
                sg.FolderBrowse(key='-FOLDER BROWSER-', initial_folder=dicom_path)],
               [sg.Text('File'),
-               sg.Spin([0], key='-FILENO-', enable_events=True, auto_size_text=False, size=4),
+               sg.Spin([0], key='-FILENO-', enable_events=True, auto_size_text=False, size=4,
+                       bind_return_key=True), #wrap only in newer sg?
                sg.Text('Frame'),
                sg.Spin([0], key='-FRAMENO-', enable_events=True, auto_size_text=False, size=3),
                sg.Text('Axis'),
@@ -173,6 +174,9 @@ if __name__ == '__main__':
             fig.canvas.draw()
 
         if event == '-FILENO-' and dicom_data:
+            if values['-FILENO-'] not in window['-FILENO-'].Values:
+                window['-FILENO-'].Update(value=0)
+                values['-FILENO-']=0
             fileNo = values['-FILENO-']
             frameNo = values['-FRAMENO-']
             axisNo = values['-AXIS-']
