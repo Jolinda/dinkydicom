@@ -71,7 +71,7 @@ def draw_figure(canvas, figure):
 
 if __name__ == '__main__':
     config = configparser.ConfigParser()
-    configfile = pathlib.Path.cwd() / 'settings.ini'
+    configfile = pathlib.Path.home() / 'settings.ini'
     if configfile.exists():
         config.read(configfile)
     else:
@@ -250,6 +250,6 @@ if __name__ == '__main__':
 
     window.close()
 
-    with open('settings.ini', 'w') as f:
+    with open(configfile, 'w') as f:
         config.write(f)
 
