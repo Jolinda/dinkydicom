@@ -1,18 +1,19 @@
-[tool.poetry]
+[project]
 name = "dinkydicom"
-version = "1.0.0"
+version = "1.0.1"
 description = "viewer for enhanced MR dicoms with mosaic options"
-authors = ["jolinda <jolinda@uoregon.edu>"]
+authors = [
+    {name = "Jolinda Smith", email = "jolinda@uoregon.edu"}
+]
 license = "MIT"
 readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.10"
-numpy = "^1.23"
-matplotlib = "^3.6"
-PySimpleGUI = "^4.60"
-pydicom = "^2.3"
-
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.23",
+    "matplotlib>=3.6",
+    "PySimpleGUI>=4.60",
+    "pydicom>=2.3"
+]
 
 [build-system]
 requires = ["poetry-core"]
