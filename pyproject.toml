@@ -1,6 +1,6 @@
 [project]
 name = "dinkydicom"
-version = "1.0.1"
+version = "1.1.0"
 description = "viewer for enhanced MR dicoms with mosaic options"
 authors = [
     {name = "Jolinda Smith", email = "jolinda@uoregon.edu"}
@@ -11,10 +11,13 @@ requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.23",
     "matplotlib>=3.6",
-    "PySimpleGUI>=4.60",
+    "freesimplegui",
     "pydicom>=2.3"
 ]
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[project.gui-scripts]
+dinkydicom = "dinkydicom.dinkydicom:main"

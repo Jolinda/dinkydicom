@@ -69,7 +69,7 @@ def draw_figure(canvas, figure):
    tkcanvas.get_tk_widget().pack(side='top', fill='both', expand=1)
    return tkcanvas
 
-if __name__ == '__main__':
+def main():
     config = configparser.ConfigParser()
     configfile = pathlib.Path.home() / 'settings.ini'
     if configfile.exists():
